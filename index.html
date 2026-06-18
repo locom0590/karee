@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, orientation=landscape">
-    <title>VR Box - Kesin Çözümlü Baş Hareketli Oyun</title>
+    <title>VR Box - Sarsıntısız ve Akıcı Baş Hareketi</title>
     <style>
         body {
             margin: 0;
@@ -36,8 +36,7 @@
             border-right: 2px solid #111;
         }
 
-        /* Dinamik olarak hareket edecek olan Oyun Dünyası Konteyneri */
-        /* scale(0.75) ile her iki gözdeki dünyayı biraz uzaklaştırıp ekrana sığdırdık */
+        /* Oyun Dünyası Konteyneri */
         .game-world {
             position: absolute;
             width: 480px;
@@ -111,7 +110,7 @@
         }
         .option-card div { width: 100%; height: 100%; }
 
-        /* Her iki gözün tam merkezindeki Sabit İmleçler (Reticle) */
+        /* Sabit Merkez İmleçler (Reticle) */
         .reticle {
             position: absolute;
             top: 50%;
@@ -207,7 +206,7 @@
 
     <div id="start-overlay">
         <h2>VR BOX Baş Hareketli Eşleştirme</h2>
-        <p>Telefonu yatay olarak VR BOX'a yerleştirmeden önce seviye seçin.<br>Kafanızı doğal bir şekilde sağa-sola, yukarı-aşağı çevirerek oynayabilirsiniz.</p>
+        <p>Telefonu yatay olarak VR BOX'a yerleştirmeden önce seviye seçin.<br>Filtrelenmiş sarsıntısız baş takibi aktiftir.</p>
         <div class="level-buttons">
             <button class="lvl-btn" id="lvl1">SEVİYE 1 (2 Renk)</button>
             <button class="lvl-btn" id="lvl2">SEVİYE 2 (3 Renk)</button>
@@ -238,16 +237,19 @@
         let worldPos = {
             currentX: 0, currentY: 0,
             targetX: 0,  targetY: 0,
-            speedMultiplier: 0.4, // Kafa hareket hassasiyeti
-            friction: 0.18,
-            // Karelerin ekrandan tamamen kaçmaması için sınır limitleri daraltıldı
+            speedMultiplier: 0.45, 
+            friction: 0.12, // Akış yumuşatması artırıldı
             minX: -130, maxX: 130,
             minY: -80, maxY: 80
         };
 
-        let initialAlpha = null;
+        // Filtreleme (Low-pass filter) ve Kalibrasyon Değişkenleri
         let initialBeta = null;
         let initialGamma = null;
+        let smoothedX = 0;
+        let smoothedY = 0;
+        const filterFactor = 0.15; // 0 ile 1 arası. Küçüldükçe sarsıntı filtresi artar, hareketler yumuşar.
+        const deadZone = 0.4;      // Derece cinsinden ölü bölge (titreme önleyici)
 
         let hoveredOptionIndex = -1;
         let hoverStartTime = null;
@@ -275,24 +277,36 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // Yenilenen Kesin Eksen Kalibrasyonu (Yatay Modda VR Box Kontrolü İçin)
+        // SARSINTISIZ YENİ JİROSKOP FİLTRELEME MOTORU
         function handleVRMovement(event) {
-            if (initialAlpha === null) {
-                initialAlpha = event.alpha;
+            if (initialBeta === null) {
                 initialBeta = event.beta;
                 initialGamma = event.gamma;
+                return;
             }
 
-            // Yatay modda kafayı sağa sola çevirmek gamma veya beta eksenlerini tetikler.
-            // Çoğu mobil tarayıcıda landscape modundayken kafa rotasyonu için en stabil formül:
-            let diffX = event.beta - initialBeta; 
-            let diffY = event.gamma - initialGamma;
+            // Yatay modda ham kafa açı değişimleri
+            let rawDiffX = event.beta - initialBeta; 
+            let rawDiffY = event.gamma - initialGamma;
 
-            // Kafa hareket yönüne göre dünyayı ters yönde kusursuz kaydır
-            worldPos.targetX = -diffX * worldPos.speedMultiplier * 20;
-            worldPos.targetY = -diffY * worldPos.speedMultiplier * 20;
+            // 1. Adım: Büyük Açı Sıçramalarını (Gimbal Lock/Sakkadik) engellemek için koruma sınırı
+            if (Math.abs(rawDiffX) > 40) return;
+            if (Math.abs(rawDiffY) > 40) return;
 
-            // Güvenli alan sınırlandırması
+            // 2. Adım: Dead-Zone (Titreme Önleyici Ölü Bölge) Kontrolü
+            let targetX = (Math.abs(rawDiffX) > deadZone) ? rawDiffX : 0;
+            let targetY = (Math.abs(rawDiffY) > deadZone) ? rawDiffY : 0;
+
+            // 3. Adım: Düşük Geçirgen Filtre (Low-pass Filter) Uygulaması
+            // Sıçramaları yok edip hareketi tamamen zamana yayarak pürüzsüzleştirir
+            smoothedX = smoothedX + (targetX - smoothedX) * filterFactor;
+            smoothedY = smoothedY + (targetY - smoothedY) * filterFactor;
+
+            // Kafa yönüne göre hedefleri ayarla
+            worldPos.targetX = -smoothedX * worldPos.speedMultiplier * 20;
+            worldPos.targetY = -smoothedY * worldPos.speedMultiplier * 20;
+
+            // Güvenli alan sınırlandırması (Karelerin ekrandan taşmasını önler)
             worldPos.targetX = Math.max(worldPos.minX, Math.min(worldPos.maxX, worldPos.targetX));
             worldPos.targetY = Math.max(worldPos.minY, Math.min(worldPos.maxY, worldPos.targetY));
         }
@@ -442,11 +456,11 @@
         }
 
         function gameLoop() {
-            // Dünyanın pozisyonunu yumuşak bir şekilde hedefe kaydır (Interpolation)
+            // Enterpolasyon ile dünyayı yumuşatarak kaydır
             worldPos.currentX += (worldPos.targetX - worldPos.currentX) * worldPos.friction;
             worldPos.currentY += (worldPos.targetY - worldPos.currentY) * worldPos.friction;
 
-            // Küçültülmüş ölçeği (scale(0.75)) kayma efektiyle birleştirerek render et
+            // Küçültülmüş ölçek (scale(0.75)) ile sarsıntısız kayma efektini birleştir
             const transformStyle = `translate(${worldPos.currentX}px, ${worldPos.currentY}px) scale(0.75)`;
             worldL.style.transform = transformStyle;
             worldR.style.transform = transformStyle;
