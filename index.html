@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, orientation=landscape">
-    <title>VR Box - Jiroskop Baş Hareketli Renk Oyunu</title>
+    <title>VR Box - Kesin Çözümlü Baş Hareketli Oyun</title>
     <style>
         body {
             margin: 0;
@@ -32,16 +32,16 @@
             justify-content: center;
         }
 
-        /* İki gözü ayıran ince siyah çizgi */
         #left-eye {
             border-right: 2px solid #111;
         }
 
         /* Dinamik olarak hareket edecek olan Oyun Dünyası Konteyneri */
+        /* scale(0.75) ile her iki gözdeki dünyayı biraz uzaklaştırıp ekrana sığdırdık */
         .game-world {
             position: absolute;
-            width: 500px;
-            height: 300px;
+            width: 480px;
+            height: 280px;
             display: flex;
             flex-direction: row;
             align-items: center;
@@ -56,16 +56,16 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 15px;
+            gap: 12px;
             width: 40%;
         }
 
         .score-board {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
             background: rgba(255, 255, 255, 0.1);
-            padding: 6px 12px;
-            border-radius: 10px;
+            padding: 5px 10px;
+            border-radius: 8px;
         }
 
         /* Sağ Bölüm: 4 Köşe Seçenek Grubu */
@@ -73,7 +73,7 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             grid-template-rows: 1fr 1fr;
-            gap: 25px;
+            gap: 20px;
             justify-items: center;
             align-items: center;
             width: 55%;
@@ -87,8 +87,8 @@
 
         /* Küçültülmüş Seçenek Kartları */
         .option-card {
-            width: 60px;
-            height: 60px;
+            width: 55px;
+            height: 55px;
             border: 3px solid #444;
             border-radius: 6px;
             display: grid;
@@ -99,7 +99,6 @@
             position: relative;
         }
 
-        /* Seçeneklerin içindeki siyah artı (+) çizgileri */
         .option-card::before {
             content: ""; position: absolute; top: 0; left: 50%;
             width: 3px; height: 100%; background-color: #1a1a1a;
@@ -126,11 +125,10 @@
             box-shadow: 0 0 8px #fff;
         }
 
-        /* Seçim dairesi efekti için halka */
         .reticle-ring {
             position: absolute;
             top: 50%; left: 50%;
-            width: 20px; height: 20px;
+            width: 22px; height: 22px;
             border: 2px solid transparent;
             border-radius: 50%;
             transform: translate(-50%, -50%);
@@ -161,12 +159,11 @@
         #lvl2 { background-color: #f1c40f; color: #222; }
         #lvl4 { background-color: #e74c3c; }
 
-        /* Referans kare çizimi için sol göze ait canvas (Sadece referans kareyi render eder) */
         .ref-canvas {
-            width: 120px;
-            height: 120px;
+            width: 100px;
+            height: 100px;
             background: #222;
-            border-radius: 8px;
+            border-radius: 6px;
         }
     </style>
 </head>
@@ -179,7 +176,7 @@
         <div class="game-world" id="world-left">
             <div class="left-panel">
                 <div class="score-board">Skor: <span id="score-l">0</span></div>
-                <canvas class="ref-canvas" id="refCanvasL" width="120" height="120"></canvas>
+                <canvas class="ref-canvas" id="refCanvasL" width="100" height="100"></canvas>
             </div>
             <div class="options-container" id="options-l">
                 <div class="option-card" id="l-opt0"></div>
@@ -197,7 +194,7 @@
         <div class="game-world" id="world-right">
             <div class="left-panel">
                 <div class="score-board">Skor: <span id="score-r">0</span></div>
-                <canvas class="ref-canvas" id="refCanvasR" width="120" height="120"></canvas>
+                <canvas class="ref-canvas" id="refCanvasR" width="100" height="100"></canvas>
             </div>
             <div class="options-container" id="options-r">
                 <div class="option-card" id="r-opt0"></div>
@@ -210,7 +207,7 @@
 
     <div id="start-overlay">
         <h2>VR BOX Baş Hareketli Eşleştirme</h2>
-        <p>Telefonu VR BOX'a yerleştirmeden önce seviye seçin.<br>Kutunun içine koyup kafanızı çevirerek oynayacaksınız.</p>
+        <p>Telefonu yatay olarak VR BOX'a yerleştirmeden önce seviye seçin.<br>Kafanızı doğal bir şekilde sağa-sola, yukarı-aşağı çevirerek oynayabilirsiniz.</p>
         <div class="level-buttons">
             <button class="lvl-btn" id="lvl1">SEVİYE 1 (2 Renk)</button>
             <button class="lvl-btn" id="lvl2">SEVİYE 2 (3 Renk)</button>
@@ -237,20 +234,20 @@
         let correctOptionIndex = 0;
         let isWaitingForOptions = false;
 
-        // VR Kamera/Dünya Pozisyon Fizikleri (Hız VR konforu için optimize edildi)
+        // VR Kamera Dünyası Dinamikleri
         let worldPos = {
             currentX: 0, currentY: 0,
             targetX: 0,  targetY: 0,
-            speedMultiplier: 0.25, // Kafa hassasiyeti
-            friction: 0.15,
-            // Dünyanın maksimum kayma sınırları (Kullanıcı kafasını çok çevirip objeleri kaybetmesin diye)
-            minX: -180, maxX: 180,
-            minY: -100, maxY: 100
+            speedMultiplier: 0.4, // Kafa hareket hassasiyeti
+            friction: 0.18,
+            // Karelerin ekrandan tamamen kaçmaması için sınır limitleri daraltıldı
+            minX: -130, maxX: 130,
+            minY: -80, maxY: 80
         };
 
-        // VR Baş Kalibrasyon ilk değerleri
         let initialAlpha = null;
         let initialBeta = null;
+        let initialGamma = null;
 
         let hoveredOptionIndex = -1;
         let hoverStartTime = null;
@@ -278,28 +275,24 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // Kafa Hareketlerini Yakalama (VR Modu)
+        // Yenilenen Kesin Eksen Kalibrasyonu (Yatay Modda VR Box Kontrolü İçin)
         function handleVRMovement(event) {
-            // VR Box dikey durduğunda:
-            // alpha: Kafayı sağa-sola çevirme (Yaw)
-            // beta: Kafayı yukarı-aşağı eğme (Pitch)
             if (initialAlpha === null) {
                 initialAlpha = event.alpha;
                 initialBeta = event.beta;
+                initialGamma = event.gamma;
             }
 
-            let diffX = event.alpha - initialAlpha;
-            // 360 derece geçiş düzeltmesi
-            if (diffX > 180) diffX -= 360;
-            if (diffX < -180) diffX += 360;
+            // Yatay modda kafayı sağa sola çevirmek gamma veya beta eksenlerini tetikler.
+            // Çoğu mobil tarayıcıda landscape modundayken kafa rotasyonu için en stabil formül:
+            let diffX = event.beta - initialBeta; 
+            let diffY = event.gamma - initialGamma;
 
-            let diffY = event.beta - initialBeta;
+            // Kafa hareket yönüne göre dünyayı ters yönde kusursuz kaydır
+            worldPos.targetX = -diffX * worldPos.speedMultiplier * 20;
+            worldPos.targetY = -diffY * worldPos.speedMultiplier * 20;
 
-            // Kafa hareketinin tersine dünyayı kaydırıyoruz (Sanal gerçeklik hissi için)
-            worldPos.targetX = diffX * worldPos.speedMultiplier * 25;
-            worldPos.targetY = -diffY * worldPos.speedMultiplier * 25;
-
-            // Sınırlandırma (Clamping)
+            // Güvenli alan sınırlandırması
             worldPos.targetX = Math.max(worldPos.minX, Math.min(worldPos.maxX, worldPos.targetX));
             worldPos.targetY = Math.max(worldPos.minY, Math.min(worldPos.maxY, worldPos.targetY));
         }
@@ -324,7 +317,6 @@
                 }
             }
 
-            // Hem Sol Hem Sağ Göz Seçenek Kartlarını Boya
             const sides = ['l', 'r'];
             sides.forEach(side => {
                 for (let i = 0; i < 4; i++) {
@@ -339,7 +331,6 @@
                 }
             });
 
-            // Referans Kareleri Canvaslara Çiz
             drawRefCanvas(ctxL);
             drawRefCanvas(ctxR);
 
@@ -359,35 +350,31 @@
                     isWaitingForOptions = false;
                     optContL.classList.remove('hidden-options');
                     optContR.classList.remove('hidden-options');
-                }, 2000); // 2 saniye bekleme süresi
+                }, 2000);
             }
         }
 
         function drawRefCanvas(ctx) {
-            ctx.clearRect(0,0,120,120);
-            const s = 120;
+            ctx.clearRect(0,0,100,100);
+            const s = 100;
             ctx.fillStyle = targetColors[0]; ctx.fillRect(0, 0, s/2, s/2);
             ctx.fillStyle = targetColors[1]; ctx.fillRect(s/2, 0, s/2, s/2);
             ctx.fillStyle = targetColors[2]; ctx.fillRect(0, s/2, s/2, s/2);
             ctx.fillStyle = targetColors[3]; ctx.fillRect(s/2, s/2, s/2, s/2);
-            // Ortadaki artı
             ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 3;
             ctx.beginPath(); ctx.moveTo(s/2,0); ctx.lineTo(s/2,s); ctx.moveTo(0,s/2); ctx.lineTo(s,s/2); ctx.stroke();
         }
 
-        // Çarpışma Testi (Ekranın tam ortasındaki sabit noktaya göre algılama yapar)
         function checkVRCollision() {
             if (isWaitingForOptions) return;
 
             let insideAnyZone = false;
-            // Ekranın tam ortasındaki sanal göz reticle koordinatı
             const eyeWidth = window.innerWidth / 2;
             const eyeHeight = window.innerHeight;
             const centerX = eyeWidth / 2;
             const centerY = eyeHeight / 2;
 
             for (let i = 0; i < 4; i++) {
-                // Algılamayı sol göz ekranındaki kartların gerçek pozisyonuna göre yapıyoruz
                 const card = document.getElementById(`l-opt${i}`);
                 const rect = card.getBoundingClientRect();
 
@@ -404,7 +391,6 @@
                         document.getElementById(`l-opt${i}`).style.borderColor = '#f1c40f';
                         document.getElementById(`r-opt${i}`).style.borderColor = '#f1c40f';
 
-                        // Yüklenme halkası görsel güncellemesi
                         let progress = Math.min(1, elapsed / requiredHoverTime);
                         updateReticleRings(progress);
 
@@ -455,14 +441,13 @@
             setTimeout(() => { generateNewRound(false); }, 300);
         }
 
-        // VR Ana Döngüsü
         function gameLoop() {
             // Dünyanın pozisyonunu yumuşak bir şekilde hedefe kaydır (Interpolation)
             worldPos.currentX += (worldPos.targetX - worldPos.currentX) * worldPos.friction;
             worldPos.currentY += (worldPos.targetY - worldPos.currentY) * worldPos.friction;
 
-            // Sol ve Sağ göz dünyalarını senkronize hareket ettir
-            const transformStyle = `translate(${worldPos.currentX}px, ${worldPos.currentY}px)`;
+            // Küçültülmüş ölçeği (scale(0.75)) kayma efektiyle birleştirerek render et
+            const transformStyle = `translate(${worldPos.currentX}px, ${worldPos.currentY}px) scale(0.75)`;
             worldL.style.transform = transformStyle;
             worldR.style.transform = transformStyle;
 
