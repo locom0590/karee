@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, orientation=landscape">
-    <title>VR Box - Sarsıntısız ve Akıcı Baş Hareketi</title>
+    <title>VR Box - Tam Optimize Baş Hareketi Oyunu</title>
     <style>
         body {
             margin: 0;
@@ -36,58 +36,42 @@
             border-right: 2px solid #111;
         }
 
-        /* Oyun Dünyası Konteyneri */
+        /* Tüm Elemanları Tutan Dinamik VR Dünyası */
         .game-world {
             position: absolute;
-            width: 480px;
-            height: 280px;
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            justify-content: space-around;
+            width: 90%;
+            height: 90%;
             pointer-events: none;
             box-sizing: border-box;
         }
 
-        /* Sol Bölüm: Skor ve Referans Kare */
-        .left-panel {
+        /* Merkez Panel: Sadece Referans Kareyi ve Skoru Tutar */
+        .center-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 12px;
-            width: 40%;
+            gap: 10px;
+            z-index: 2;
         }
 
         .score-board {
             font-size: 14px;
             font-weight: bold;
             background: rgba(255, 255, 255, 0.1);
-            padding: 5px 10px;
+            padding: 4px 10px;
             border-radius: 8px;
         }
 
-        /* Sağ Bölüm: 4 Köşe Seçenek Grubu */
-        .options-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
-            gap: 20px;
-            justify-items: center;
-            align-items: center;
-            width: 55%;
-            height: 80%;
-            transition: opacity 0.3s ease;
-        }
-
-        .hidden-options {
-            opacity: 0.1;
-        }
-
-        /* Küçültülmüş Seçenek Kartları */
+        /* 4 Köşedeki Seçenek Kartları İçin Mutlak Konumlandırma */
         .option-card {
-            width: 55px;
-            height: 55px;
+            position: absolute;
+            width: 60px;
+            height: 60px;
             border: 3px solid #444;
             border-radius: 6px;
             display: grid;
@@ -95,9 +79,20 @@
             grid-template-rows: 1fr 1fr;
             overflow: hidden;
             box-sizing: border-box;
-            position: relative;
+            transition: border-color 0.2s, opacity 0.3s ease;
         }
 
+        /* Köşe Dağılımları */
+        .opt-tl { top: 10px; left: 10px; }     /* Sol Üst */
+        .opt-tr { top: 10px; right: 10px; }    /* Sağ Üst */
+        .opt-bl { bottom: 10px; left: 10px; }  /* Sol Alt */
+        .opt-br { bottom: 10px; right: 10px; } /* Sağ Alt */
+
+        .hidden-options {
+            opacity: 0.15 !important;
+        }
+
+        /* Seçeneklerin içindeki siyah artı (+) çizgileri */
         .option-card::before {
             content: ""; position: absolute; top: 0; left: 50%;
             width: 3px; height: 100%; background-color: #1a1a1a;
@@ -173,16 +168,14 @@
         <div class="reticle-ring" id="ring-l"></div>
         
         <div class="game-world" id="world-left">
-            <div class="left-panel">
+            <div class="center-panel">
                 <div class="score-board">Skor: <span id="score-l">0</span></div>
                 <canvas class="ref-canvas" id="refCanvasL" width="100" height="100"></canvas>
             </div>
-            <div class="options-container" id="options-l">
-                <div class="option-card" id="l-opt0"></div>
-                <div class="option-card" id="l-opt1"></div>
-                <div class="option-card" id="l-opt2"></div>
-                <div class="option-card" id="l-opt3"></div>
-            </div>
+            <div class="option-card opt-tl" id="l-opt0"></div>
+            <div class="option-card opt-tr" id="l-opt1"></div>
+            <div class="option-card opt-bl" id="l-opt2"></div>
+            <div class="option-card opt-br" id="l-opt3"></div>
         </div>
     </div>
 
@@ -191,22 +184,20 @@
         <div class="reticle-ring" id="ring-r"></div>
         
         <div class="game-world" id="world-right">
-            <div class="left-panel">
+            <div class="center-panel">
                 <div class="score-board">Skor: <span id="score-r">0</span></div>
                 <canvas class="ref-canvas" id="refCanvasR" width="100" height="100"></canvas>
             </div>
-            <div class="options-container" id="options-r">
-                <div class="option-card" id="r-opt0"></div>
-                <div class="option-card" id="r-opt1"></div>
-                <div class="option-card" id="r-opt2"></div>
-                <div class="option-card" id="r-opt3"></div>
-            </div>
+            <div class="option-card opt-tl" id="r-opt0"></div>
+            <div class="option-card opt-tr" id="r-opt1"></div>
+            <div class="option-card opt-bl" id="r-opt2"></div>
+            <div class="option-card opt-br" id="r-opt3"></div>
         </div>
     </div>
 
     <div id="start-overlay">
-        <h2>VR BOX Baş Hareketli Eşleştirme</h2>
-        <p>Telefonu yatay olarak VR BOX'a yerleştirmeden önce seviye seçin.<br>Filtrelenmiş sarsıntısız baş takibi aktiftir.</p>
+        <h2>VR BOX Akıllı Baş Takip Sistemi</h2>
+        <p>Telefonu hangi yatay yönde (düz veya ters) koyarsanız koyun algılama otomatik optimize edilir.<br>Referans kare merkezde, seçenekler köşelerdedir.</p>
         <div class="level-buttons">
             <button class="lvl-btn" id="lvl1">SEVİYE 1 (2 Renk)</button>
             <button class="lvl-btn" id="lvl2">SEVİYE 2 (3 Renk)</button>
@@ -217,8 +208,6 @@
     <script>
         const worldL = document.getElementById('world-left');
         const worldR = document.getElementById('world-right');
-        const optContL = document.getElementById('options-l');
-        const optContR = document.getElementById('options-r');
         const canvasL = document.getElementById('refCanvasL');
         const canvasR = document.getElementById('refCanvasR');
         const ctxL = canvasL.getContext('2d');
@@ -237,19 +226,19 @@
         let worldPos = {
             currentX: 0, currentY: 0,
             targetX: 0,  targetY: 0,
-            speedMultiplier: 0.45, 
-            friction: 0.12, // Akış yumuşatması artırıldı
-            minX: -130, maxX: 130,
-            minY: -80, maxY: 80
+            speedMultiplier: 0.5, 
+            friction: 0.12, 
+            minX: -160, maxX: 160,
+            minY: -100, maxY: 100
         };
 
-        // Filtreleme (Low-pass filter) ve Kalibrasyon Değişkenleri
+        // Filtreleme ve Kalibrasyon Değişkenleri
         let initialBeta = null;
         let initialGamma = null;
         let smoothedX = 0;
         let smoothedY = 0;
-        const filterFactor = 0.15; // 0 ile 1 arası. Küçüldükçe sarsıntı filtresi artar, hareketler yumuşar.
-        const deadZone = 0.4;      // Derece cinsinden ölü bölge (titreme önleyici)
+        const filterFactor = 0.15; 
+        const deadZone = 0.3;      
 
         let hoveredOptionIndex = -1;
         let hoverStartTime = null;
@@ -277,7 +266,7 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // SARSINTISIZ YENİ JİROSKOP FİLTRELEME MOTORU
+        // AKILLI ÇİFT YÖNLÜ JİROSKOP MOTORU
         function handleVRMovement(event) {
             if (initialBeta === null) {
                 initialBeta = event.beta;
@@ -285,28 +274,30 @@
                 return;
             }
 
-            // Yatay modda ham kafa açı değişimleri
-            let rawDiffX = event.beta - initialBeta; 
-            let rawDiffY = event.gamma - initialGamma;
+            // Cihazın ters mi yoksa düz mü yatay tutulduğunu (window.orientation) kontrol ederek yönü saptıyoruz
+            let landscapeOrientation = window.orientation || 0;
+            let directionInverter = (landscapeOrientation === -90) ? -1 : 1;
 
-            // 1. Adım: Büyük Açı Sıçramalarını (Gimbal Lock/Sakkadik) engellemek için koruma sınırı
-            if (Math.abs(rawDiffX) > 40) return;
-            if (Math.abs(rawDiffY) > 40) return;
+            // Yatay modda kafa rotasyon dinamikleri
+            let rawDiffX = (event.beta - initialBeta) * directionInverter; 
+            let rawDiffY = (event.gamma - initialGamma) * directionInverter;
 
-            // 2. Adım: Dead-Zone (Titreme Önleyici Ölü Bölge) Kontrolü
+            // Ani açı sıçrama koruması
+            if (Math.abs(rawDiffX) > 40 || Math.abs(rawDiffY) > 40) return;
+
+            // Dead-Zone (Titreme Önleyici)
             let targetX = (Math.abs(rawDiffX) > deadZone) ? rawDiffX : 0;
             let targetY = (Math.abs(rawDiffY) > deadZone) ? rawDiffY : 0;
 
-            // 3. Adım: Düşük Geçirgen Filtre (Low-pass Filter) Uygulaması
-            // Sıçramaları yok edip hareketi tamamen zamana yayarak pürüzsüzleştirir
+            // Low-pass Filter ile sarsıntısız pürüzsüzleştirme
             smoothedX = smoothedX + (targetX - smoothedX) * filterFactor;
             smoothedY = smoothedY + (targetY - smoothedY) * filterFactor;
 
-            // Kafa yönüne göre hedefleri ayarla
-            worldPos.targetX = -smoothedX * worldPos.speedMultiplier * 20;
-            worldPos.targetY = -smoothedY * worldPos.speedMultiplier * 20;
+            // Kafa hareket yönü ile imleç eşleşmesini kusursuzlaştırmak için yönler (+ / -) terslendi
+            worldPos.targetX = smoothedX * worldPos.speedMultiplier * 20;
+            worldPos.targetY = smoothedY * worldPos.speedMultiplier * 20;
 
-            // Güvenli alan sınırlandırması (Karelerin ekrandan taşmasını önler)
+            // Güvenli alan sınırlandırması
             worldPos.targetX = Math.max(worldPos.minX, Math.min(worldPos.maxX, worldPos.targetX));
             worldPos.targetY = Math.max(worldPos.minY, Math.min(worldPos.maxY, worldPos.targetY));
         }
@@ -342,6 +333,10 @@
                         div.style.backgroundColor = color;
                         card.appendChild(div);
                     });
+
+                    // 2 saniye bekleme esnasında CSS sınıfı ekle/çıkar
+                    if (!immediate) card.classList.add('hidden-options');
+                    else card.classList.remove('hidden-options');
                 }
             });
 
@@ -352,19 +347,18 @@
             hoverStartTime = null;
             resetReticleRings();
 
-            if (immediate) {
-                isWaitingForOptions = false;
-                optContL.classList.remove('hidden-options');
-                optContR.classList.remove('hidden-options');
-            } else {
+            if (!immediate) {
                 isWaitingForOptions = true;
-                optContL.classList.add('hidden-options');
-                optContR.classList.add('hidden-options');
                 setTimeout(() => {
                     isWaitingForOptions = false;
-                    optContL.classList.remove('hidden-options');
-                    optContR.classList.remove('hidden-options');
+                    sides.forEach(side => {
+                        for (let i = 0; i < 4; i++) {
+                            document.getElementById(`${side}-opt${i}`).classList.remove('hidden-options');
+                        }
+                    });
                 }, 2000);
+            } else {
+                isWaitingForOptions = false;
             }
         }
 
@@ -456,12 +450,12 @@
         }
 
         function gameLoop() {
-            // Enterpolasyon ile dünyayı yumuşatarak kaydır
+            // Dünyayı enterpolasyonla pürüzsüz kaydır
             worldPos.currentX += (worldPos.targetX - worldPos.currentX) * worldPos.friction;
             worldPos.currentY += (worldPos.targetY - worldPos.currentY) * worldPos.friction;
 
-            // Küçültülmüş ölçek (scale(0.75)) ile sarsıntısız kayma efektini birleştir
-            const transformStyle = `translate(${worldPos.currentX}px, ${worldPos.currentY}px) scale(0.75)`;
+            // VR Box mercek odak konforu için scale(0.8) ile birleştirerek uygula
+            const transformStyle = `translate(${worldPos.currentX}px, ${worldPos.currentY}px) scale(0.8)`;
             worldL.style.transform = transformStyle;
             worldR.style.transform = transformStyle;
 
